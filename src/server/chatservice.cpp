@@ -11,7 +11,7 @@ ChatService *ChatService::instance()
 }
 ChatService::ChatService()
 {
-   // 用户基本业务管理相关事件处理回调注册
+    // 用户基本业务管理相关事件处理回调注册
     _msgHandlerMap.insert({LOGIN_MSG, std::bind(&ChatService::login, this, _1, _2, _3)});
     _msgHandlerMap.insert({LOGINOUT_MSG, std::bind(&ChatService::loginout, this, _1, _2, _3)});
     _msgHandlerMap.insert({REG_MSG, std::bind(&ChatService::reg, this, _1, _2, _3)});
@@ -349,4 +349,19 @@ void ChatService::groupChat(const TcpConnectionPtr &conn, json &js, Timestamp ti
             }
         }
     }
+}
+
+// 从redis消息队列中获取订阅的消息
+void ChatService::handleRedisSubscribeMessage(int userid, string msg)
+{
+    lock_guard<mutex> lock(_connMutex);
+    auto it = _userConnMap.find(userid);
+    if (it != _userConnMap.end())
+    {
+        it->second->send(msg);
+        return;
+    }
+
+    // 存储该用户的离线消息
+    _offlineMsgModel.insert(userid, msg);
 }
